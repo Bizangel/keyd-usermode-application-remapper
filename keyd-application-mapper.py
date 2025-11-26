@@ -1,30 +1,12 @@
 #!/usr/bin/python3
 
-import subprocess
 import argparse
-import select
-import socket
-import struct
 import os
-import errno
-import shutil
 import re
 import sys
 import fcntl
-import signal
-from fnmatch import fnmatch
 
-CONFIG_PATH = os.getenv('HOME')+'/.config/keyd/app.conf'
-LOCKFILE = os.getenv('HOME')+'/.config/keyd/app.lock'
-LOGFILE = os.getenv('HOME')+'/.config/keyd/app.log'
-
-KEYD_BIN = os.environ.get('KEYD_BIN', 'keyd')
-
-debug_flag = os.getenv('KEYD_DEBUG')
-
-def dbg(s):
-    if debug_flag:
-        print(s)
+LOCKFILE = os.getenv('HOME') + '/.config/keyd/app.lock'
 
 def die(msg):
     sys.stderr.write('ERROR: ')
@@ -35,57 +17,6 @@ def die(msg):
 def assert_env(var):
     if not os.getenv(var):
         raise Exception(f'Missing environment variable {var}')
-
-def run(cmd):
-    return subprocess.check_output(['/bin/sh', '-c', cmd]).decode('utf8')
-
-def parse_config(path):
-    config = []
-
-    for line in open(path):
-        line = line.strip()
-
-        if line.startswith('[') and line.endswith(']'):
-            a = line[1:-1].split('|')
-
-            if len(a) < 2:
-                cls = a[0]
-                title = '*'
-            else:
-                cls = a[0]
-                title = a[1]
-
-            bindings = []
-            config.append((cls, title, bindings))
-        elif line == '':
-            continue
-        elif line.startswith('#'):
-            continue
-        else:
-            bindings.append(line)
-
-    return config
-
-def new_interruptible_generator(fd, event_fn, flushed_fn = None):
-    intr, intw = os.pipe()
-
-    def handler(s, _):
-        os.write(intw, b'i')
-
-    signal.signal(signal.SIGUSR1, handler)
-
-    while True:
-        r,_,_ = select.select([fd, intr], [], [])
-
-        if intr in r:
-            os.read(intr, 1)
-            yield None
-        if fd in r:
-            if flushed_fn:
-                while not flushed_fn():
-                    yield event_fn()
-            else:
-                yield event_fn()
 
 class KDE():
     def __init__(self, on_window_change):
@@ -175,7 +106,7 @@ def get_monitor(on_window_change):
     for name, mon in monitors:
         try:
             m = mon(on_window_change)
-            print(f'{name} detected')
+            print(f'{name} application switcher monitor started')
             return m
         except:
             pass
@@ -191,38 +122,11 @@ def lock():
     except:
         die('only one instance may run at a time')
 
-def daemonize():
-    print(f'Daemonizing, log output will be stored in {LOGFILE}...')
-
-    fh = open(LOGFILE, 'w')
-
-    os.close(1)
-    os.close(2)
-    os.dup2(fh.fileno(), 1)
-    os.dup2(fh.fileno(), 2)
-
-    if os.fork(): exit(0)
-    if os.fork(): exit(0)
-
 opt = argparse.ArgumentParser()
 opt.add_argument('-v', '--verbose', default=False, action='store_true', help='Log the active window (useful for discovering window and class names)')
-opt.add_argument('-d', '--daemonize', default=False, action='store_true', help='fork and run in the background')
 args = opt.parse_args()
 
-if not os.path.exists(CONFIG_PATH):
-    die('could not find app.conf, make sure it is in ~/.config/keyd/app.conf')
-
-config = parse_config(CONFIG_PATH)
 lock()
-
-def lookup_bindings(cls, title):
-    bindings = []
-    for cexp, texp, b in config:
-        if fnmatch(cls, cexp) and fnmatch(title, texp):
-            dbg(f'\tMatched {cexp}|{texp}')
-            bindings.extend(b)
-
-    return bindings
 
 def normalize_class(s):
      return re.sub('[^A-Za-z0-9]+', '-', s).strip('-').lower()
@@ -230,35 +134,17 @@ def normalize_class(s):
 def normalize_title(s):
     return re.sub(r'[\W_]+', '-', s).strip('-').lower()
 
-last_mtime = os.path.getmtime(CONFIG_PATH)
 def on_window_change(cls, title):
     global last_mtime
     global config
 
     cls = normalize_class(cls)
     title = normalize_title(title)
-
-    mtime = os.path.getmtime(CONFIG_PATH)
-
-    if mtime != last_mtime:
-        print(CONFIG_PATH + ': Updated, reloading config...')
-        config = parse_config(CONFIG_PATH)
-        last_mtime = mtime
-
-    print(config)
-
     if args.verbose:
         print(f'Active window: {cls}|{title}')
-
-    bindings = lookup_bindings(cls, title)
-    print(bindings)
-    subprocess.run([KEYD_BIN, 'bind', 'reset', *bindings], stdout=subprocess.DEVNULL)
 
 
 mon = get_monitor(on_window_change)
 mon.init()
-
-if args.daemonize:
-    daemonize()
 
 mon.run()

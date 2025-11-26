@@ -18,6 +18,20 @@ For a bit extra security users must be part of `keyd-application-switcher` group
 
 ## Quickstart
 
+1. Create access group:
+
+```sh
+sudo groupadd keyd-application-switcher
+```
+
+2. Add yourself to the group
+
+```sh
+sudo usermod -aG keyd-application-switcher "$(whoami)"
+```
+
+3.
+
 
 
 
