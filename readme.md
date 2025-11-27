@@ -1,4 +1,4 @@
-## User-Mode KeyD Application Specific Remapper.
+## User-Mode KeyD Application Specific Remapper
 **Note: Currently targeted towards: KDE Wayland - other logic has been removed for code cleaning**
 Adapted from: https://github.com/rvaiya/keyd/blob/master/scripts/keyd-application-mapper
 
@@ -88,6 +88,26 @@ Check that the service is successfully running:
 
 ```sh
 systemctl --user status keyd-application-mapper-user-reporter.service
+```
+
+Done! Your remapping should be in-place!
+
+## How to Identify Windows
+
+Stop the running service and run it manually with verbose flag
+```
+systemctl --user stop keyd-application-mapper-user-reporter
+~/.local/bin/keyd_application_mapper_user_reporter --verbose
+```
+
+Don't forget to re-enable it once you're done: `systemctl --user start keyd-application-mapper-user-reporter`
+
+As you switch focus you'll see the windows printed in the format of `classname|window title`.
+
+See for more info on the configuration and how this matching works.
+
+```
+man keyd-application-mapper
 ```
 
 
