@@ -8,4 +8,4 @@ Type=simple
 ExecStart=<home_abs_path>/.local/bin/keyd_application_mapper_user_reporter
 
 [Install]
-WantedBy=default.target
+WantedBy=graphical-session.target
