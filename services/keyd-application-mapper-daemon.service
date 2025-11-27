@@ -1,0 +1,9 @@
+[Unit]
+Description=keyd application remapper daemon - see: https://github.com/Bizangel/keyd-usermode-application-remapper
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/keyd_application_mapper_daemon
+
+[Install]
+WantedBy=multi-user.target

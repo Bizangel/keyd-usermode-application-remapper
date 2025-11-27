@@ -19,6 +19,13 @@ For a bit extra security users must be part of `keyd-application-switcher` group
 
 ## Quickstart
 
+0. Pull this repo
+
+```
+git clone https://github.com/Bizangel/keyd-usermode-application-remapper
+cd keyd-usermode-application-remapper
+```
+
 1. Create access group:
 
 ```sh
@@ -50,7 +57,39 @@ q = a
 a = q
 ```
 
-5. Set up the services.
+5. Set up the daemon service as `root`:
+
+```sh
+sudo cp keyd_application_mapper_daemon.py /usr/local/bin/keyd_application_mapper_daemon
+sudo chmod +x /usr/local/bin/keyd_application_mapper_daemon
+sudo cp services/keyd-application-mapper-daemon.service /usr/local/lib/systemd/system/keyd-application-mapper-daemon.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now keyd-application-mapper-daemon
+```
+
+Ensure that it's running the server daemon without issues:
+
+```sh
+sudo systemctl status keyd-application-mapper-daemon
+```
+
+6. Set up the usermode daemon that reports the window switches:
+
+```sh
+cp keyd_application_mapper_user_reporter.py ~/.local/bin/keyd_application_mapper_user_reporter
+chmod +x ~/.local/bin/keyd_application_mapper_user_reporter
+cp services/keyd-application-mapper-user-reporter.service ~/.config/systemd/user/keyd-application-mapper-user-reporter.service
+sed -i "s|<home_abs_path>|$HOME|" ~/.config/systemd/user/keyd-application-mapper-user-reporter.service
+systemctl --user daemon-reload
+systemctl --user enable --now keyd-application-mapper-user-reporter.service
+```
+
+Check that the service is successfully running:
+
+```sh
+systemctl --user status keyd-application-mapper-user-reporter.service
+```
+
 
 
 
