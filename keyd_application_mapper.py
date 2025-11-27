@@ -5,7 +5,10 @@ import os
 import re
 import sys
 import fcntl
+import socket
+import traceback
 
+SOCKET_PATH = "/run/keyd_application_switcher_daemon.sock"
 LOCKFILE = os.getenv('HOME') + '/.config/keyd/app.lock'
 
 def die(msg):
@@ -92,7 +95,12 @@ class KDE():
 
             @dbus.service.method('org.rvaiya.keyd')
             def updateWindow(self, title, klass, id):
-                on_window_change(klass, title)
+                try:
+                    on_window_change(klass, title)
+                except Exception:
+                    sys.stderr.write('Error on on_window_change handler: \n')
+                    sys.stderr.write(traceback.format_exc())
+                    sys.stderr.write('\n')
 
         Listener()
 
@@ -135,14 +143,16 @@ def normalize_title(s):
     return re.sub(r'[\W_]+', '-', s).strip('-').lower()
 
 def on_window_change(cls, title):
-    global last_mtime
-    global config
-
     cls = normalize_class(cls)
     title = normalize_title(title)
     if args.verbose:
         print(f'Active window: {cls}|{title}')
 
+    client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    client.settimeout(1)
+    client.connect(SOCKET_PATH)
+    client.sendall(f"{cls}|{title}".encode())
+    client.close()
 
 mon = get_monitor(on_window_change)
 mon.init()
